@@ -1,0 +1,328 @@
+1) #include<stdio.h>
+#include<omp.h>
+#include<stdlib.h>
+
+void merge(int a[] , int x1 , int y1 , int x2 , int y2)
+{
+    int p = x1, q = x2, k = 0, temp[1000], i, j;
+    while(p <= y1 && q <= y2) {
+        if(a[p] < a[q])
+            temp[k++] = a[p++];
+        else
+            temp[k++] = a[q++];
+    }
+
+    while( p <= y1 )
+        temp[k++] = a[p++];
+    while( q <= y2 )
+        temp[k++] = a[q++];
+    for(i = x1 , j = 0; i <= y2; i++,j++ )
+        a[i] = temp[j];
+}
+
+void mergesort(int a[],int p ,int q){
+  int mid = 0;
+  if(p < q){
+      mid = (p + q)/2;
+      #pragma omp parallel sections
+      {
+        #pragma omp section
+        {
+            printf("Process handing left recursion is %d\n",omp_get_thread_num());
+            mergesort(a,p,mid);
+        }
+        #pragma omp section
+        {
+            printf("Process handing right recursion is %d\n",omp_get_thread_num());
+            mergesort(a,mid+1,q);
+        }
+      }
+    merge(a,p,mid,mid+1,q);
+  }
+}
+
+int main(){
+  int n = 0, i=0;
+  printf("Enter the number of elements for sorting\n");
+  scanf("%d",&n);
+
+  int a[n];
+  for(i = 0; i < n; i++ ){
+    a[i] = rand()%100;
+  }
+
+  printf("Unsorted array is\n");
+  for(i = 0; i < n; i++ ){
+    printf("%d\n",a[i]);
+  }
+
+  mergesort(a,0,n-1);
+  printf("Sorted array is\n");
+  for(i = 0; i < n; i++ )
+    printf("%d\n",a[i]);
+  return 0;
+}
+
+===============================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+
+int main()
+{ 
+	int NoofRows, NoofCols, Vectorsize, i, j; 
+
+	printf("Read the matrix size no ofrows and columns and vectorsize\n"); 
+	scanf("%d%d%d", &NoofRows, &NoofCols, &Vectorsize); 
+
+	int Matrix[NoofRows][NoofCols],Vector[Vectorsize], Result[Vectorsize];
+
+	if (NoofRows<= 0 || NoofCols<= 0 || Vectorsize<= 0 || NoofCols != Vectorsize) 
+	{ 
+		printf("The Matrix and Vectorsize should be of positive sign\n"); 
+		exit(0); 
+	}
+
+	for (i = 0; i<NoofRows; i++)
+		for (j = 0; j <NoofCols; j++) 
+			Matrix[i][j] = i + j;
+
+	printf("The Matrix is \n"); 
+	for (i = 0; i<NoofRows; i++)
+	{ 
+		for (j = 0; j <NoofCols; j++) 
+			printf("%d \t", Matrix[i][j]); 
+		printf("\n"); 
+	}
+	for (i = 0; i<Vectorsize; i++) 
+		Vector[i] = i; 
+
+	printf("\n"); 
+	printf("The Vector is \n"); 
+	for (i = 0; i<Vectorsize; i++) 
+		printf("%d \t", Vector[i]); 
+
+	for (i = 0; i<NoofRows; i = i + 1) 
+		Result[i]=0; 
+	
+	#pragma omp parallel for private(j)
+		for (i = 0; i<NoofRows; i++)
+			for (j = 0; j <NoofCols; j++)
+				Result[i] = Result[i] + Matrix[i][j] * Vector[j];
+
+	printf("\nThe Matrix Computation result is \n"); 
+	for (i = 0; i<NoofRows; i++) 
+		printf("%d \t", Result[i]); 
+
+	return 0;
+} 
+====================================================================
+#include<omp.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<math.h>
+
+double sines[1000];
+int primes[1000];
+
+void prime_table(int prime_num)
+{
+  int i, j, p, prime;
+  i = 2;
+  p = 0;
+  while ( p <prime_num )
+  {
+    prime = 1;
+    for ( j = 2; j <i; j++ )
+      if ( ( i % j ) == 0 )
+      {
+        prime = 0;
+        break;
+      }
+    if ( prime )
+    {
+      primes[p] = i;
+      p++;
+    }
+    i++;
+  }
+}
+
+void sine_table(int sine_num)
+{
+  int i,j;
+  double a;
+  for (i = 0; i<sine_num; i++)
+    sines[i] = sin(i*M_PI/180);
+}
+  
+
+int main(){
+	int size, z, y;
+	printf("Enter the the number of primes and sine table values required : \n");
+	scanf("%d", &size);
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		{
+			prime_table(size);
+			for( y=0;y<size;y++){
+				printf("%d \n",primes[y]);
+			}
+		}
+		#pragma omp section
+		{
+			sine_table(size);
+			for( z=0;z<size;z++){
+				printf("%lf \n",sines[z]);
+			}
+		}
+	}
+  return 0;
+}
+================================================================
+#include<omp.h>
+#include<stdio.h>
+
+void main() 
+{
+	int fact1 = 1,fact2 = 1, a, i;
+	
+	printf("Enter a number to check its factorial\n");
+	scanf("%d",&a);
+	
+	#pragma omp parallel for firstprivate(a)
+	for(i = 2; i<=a; i++) 
+		fact1 = fact1 * i;
+
+	printf("When first private is not used\n");
+	printf("factorial of %d is %d \n",a,fact1);
+	
+	#pragma omp parallel for firstprivate(a,fact2)
+	for(i = 2; i<=a; i++) 
+		fact2 = fact2 * i;
+
+	printf("When first private is used\n");
+	printf("factorial of %d is %d \n",a,fact2);
+}
+==================================================================
+#include<stdio.h>
+#include<stdlib.h>
+#include<omp.h>
+#include<time.h>
+#include<math.h>
+#include<float.h>
+
+#define K 4
+
+int num_threads;
+long num_points,cluster_count[K];
+long datapoints[100][2];
+int cluster[K][2]={{75,25},{25,25},{25,75},{75,75}};
+
+void populate_points(){
+    long i;
+    #pragma omp parallel
+    for(i=0;i<num_points;i++){
+        datapoints[i][0]=rand()%100;
+        datapoints[i][1]=rand()%100;
+        printf("%ld\t%ld\n",datapoints[i][0],datapoints[i][1]);
+    }
+    for(i=0;i<4;i++)
+        cluster_count[i]=0;
+}
+
+double get_distance(int x1, int y1, int x2, int y2) {
+    int dx=x2-x1,dy=y2-y1;
+    return ((double)sqrt(dx*dx+dy*dy));
+}
+
+void classify_points() {
+    long i; int j, cluster_index; double cur_dist=0, min_dist=999;
+    #pragma omp parallel for private(cluster_index, j , i, cur_dist, min_dist)
+    for(i=0;i<num_points;i++){
+        cluster_index=-1;
+        cur_dist=0,min_dist=999;
+        for(j=0;j<K;j++){
+            cur_dist=get_distance(datapoints[i][0],datapoints[i][1],cluster[j][0],cluster[j][1]);
+            if(cur_dist<min_dist){
+                min_dist=cur_dist;
+                cluster_index=j;    
+            }
+        }
+  printf("%ld %ld belongs to %d %d \n", datapoints[i][0],datapoints[i][1],cluster[cluster_index][0],cluster[cluster_index][1]);
+                cluster_count[cluster_index]++;
+        
+    }
+}
+
+void main(){
+    printf("Max threads:%d\n",omp_get_max_threads());
+    printf("Enter number of points:");
+    scanf("%ld",&num_points);
+    populate_points();
+    double t1=omp_get_wtime();
+    classify_points();
+    double t2=omp_get_wtime();
+    printf("Time taken %lf\n",t2-t1);
+    int i=0;
+    printf("Counts\n");
+    while(i<4)
+        printf("%d->%ld\n",i,cluster_count[i++]);
+}
+==================================================================
+#include <stdio.h>
+#include <gd.h>
+#include <string.h>
+#include <omp.h>
+
+int main() {
+	char *input_file = "a1.png";
+	char *output_file = "a2.png";
+
+	int num_threads = 2;
+	
+	int color, x, y, i;
+	int red, green, blue;
+	FILE *fp;
+	
+	if((fp = fopen(input_file, "r")) == NULL) {
+		printf("Error opening file %s\n", input_file);
+		return 1;
+	}
+
+	gdImagePtr img = gdImageCreateFromPng(fp);
+	int width = gdImageSX(img);
+	int height = gdImageSY(img);
+	int combined;
+	double t1 = omp_get_wtime();
+	
+	#pragma omp parallel for private(y, color, red, green, blue, combined)
+	for(x=0; x<width; x++) {
+	    #pragma omp critical
+	    {
+			for(y=0; y<height; y++) {
+				color = gdImageGetPixel(img, x, y);
+				red   = gdImageRed(img, color);
+				green = gdImageGreen(img, color);
+				blue  = gdImageBlue(img, color);
+				combined = 0.3*red + 0.59*green + 0.11*blue;
+				color = gdImageColorAllocate(img, combined, combined, combined);
+				gdImageSetPixel(img, x, y, color);
+	        }
+	    }
+	}
+	double t2 = omp_get_wtime();
+	
+	if((fp=fopen(output_file, "w")) == NULL) {
+		printf("Error opening output file %s\n", output_file);
+		return 1;
+	}
+	gdImagePng(img, fp);
+	gdImageDestroy(img);
+	fclose(fp);
+	printf("File Size: %dx%d\n", width, height);
+	printf("Time Taken: %.3lfms\n",(t2 - t1) * 1000);
+	return 0;
+}
+=================================================================
